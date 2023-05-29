@@ -4,7 +4,7 @@ Esta clase administra una serie de procesos
 
 import math
 import asyncio
-from typing import Dict, Any
+from typing import Dict, Any, List
 from contextlib import suppress
 from multiprocessing import Queue, Process, cpu_count
 from pprocess.handler import Handler
@@ -58,6 +58,20 @@ class ParallelProcess(metaclass=UniqueInstance):
         self.task_request_manager = asyncio.Task(self._request_manager())
         self.task_responses_manager = asyncio.Task(self._responses_manager())
         self.task_process_manager = asyncio.Task(self._process_manager())
+
+    async def stop(self) -> None:
+        """_summary_"""
+        _ = [self._close_process(p_id) for p_id in self.processes]
+        self.input_queue.close()
+        self.output_queue.close()
+        # log("Se cierran controladores")
+        self.task_request_manager.cancel()
+        self.task_process_manager.cancel()
+        self.task_responses_manager.cancel()
+        with suppress(asyncio.CancelledError):
+            await self.task_request_manager
+            await self.task_process_manager
+            await self.task_responses_manager
 
     def _close_process(self, process_id: Any) -> None:
         """_summary_
@@ -150,17 +164,18 @@ class ParallelProcess(metaclass=UniqueInstance):
                 break
             await asyncio.sleep(0.001)
 
-    async def process(self, input_value: Any, request_id: Any) -> Any:
-        """Función para enviar una solicitud y esperar el resultado correspondiente
+    async def process(self, input_value: Any, handler_id: str) -> Any:
+        """Procesa un handler en un proceso aparte
 
         Args:
-            input_value (_type_): _description_
-            request_id (_type_): _description_
+            input_value (Any): Parámetros de entrada del handler
+            handler_id (str): ID del handler a ejecutar
 
         Returns:
-            _type_: _description_
+            _type_: Resultado de la ejecución del handler
         """
-        # log(f"Llega solicitud: {request_id}")
+        request_id=None
+        # log(f"Llega solicitud: {handler_id}")
         self.requests[request_id] = {
             'status': RequestLevel.NEW, 'input': input_value}
         await self._wait_to_result(request_id)
@@ -168,16 +183,13 @@ class ParallelProcess(metaclass=UniqueInstance):
         del self.requests[request_id]
         return result
 
-    async def stop(self) -> None:
-        """_summary_"""
-        _ = [self._close_process(p_id) for p_id in self.processes]
-        self.input_queue.close()
-        self.output_queue.close()
-        # log("Se cierran controladores")
-        self.task_request_manager.cancel()
-        self.task_process_manager.cancel()
-        self.task_responses_manager.cancel()
-        with suppress(asyncio.CancelledError):
-            await self.task_request_manager
-            await self.task_process_manager
-            await self.task_responses_manager
+    async def process_batch(self, input_data: List[Any], handler_id: str) -> List[Any]:
+        """Procesa un lote de tareas en paralelo y devuelve todos los resultados juntos ordenados según el orden de `input_data`.
+
+        Args:
+            input_data (List[Any]): Parámetros de entrada del handler
+            handler_id (str): ID del handler a ejecutar
+
+        Returns:
+            List[Any]: Lista de resultados de la ejecución del handler
+        """
