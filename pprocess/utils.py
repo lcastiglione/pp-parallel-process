@@ -1,5 +1,6 @@
 ﻿"""Funciones utils del proyecto"""
 
+from itertools import islice
 from typing import List
 import uuid
 
@@ -28,3 +29,8 @@ def find_small_missing_number(list_n: List[int]):
     for i in range(len(list_n) + 1):
         if i not in set_n:
             return i
+
+
+def split_array(array, n):
+    iter_array = iter(array)
+    return list(iter(lambda: list(islice(iter_array, n)), []))

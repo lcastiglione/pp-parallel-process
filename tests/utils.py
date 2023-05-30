@@ -9,10 +9,10 @@ class TestController(Controller):
 
     @classmethod
     def execute(cls, params):
-        results = {}
+        results = []
         for param in params:
-            method = param[1]['input']['method']
-            input_data = param[1]['input']['input']
-            results[param[0]]= method(input_data)
+            method = param['method']
+            input_data = param['input']
+            results.append(method(input_data))
         #print(results)
         return results
