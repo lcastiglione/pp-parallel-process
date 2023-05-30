@@ -6,12 +6,14 @@ import math
 import asyncio
 import time
 import queue
+from itertools import islice
 from typing import Dict, Any, List
 from contextlib import suppress
 from multiprocessing import Queue, Process, cpu_count
 from pprocess.controller import Controller
 from pprocess.unique_instance import UniqueInstance
 from pprocess.utils import find_small_missing_number, get_uid
+from datetime import datetime
 
 
 class RequestLevel:
@@ -32,7 +34,7 @@ class ParallelProcess(metaclass=UniqueInstance):
         num_processes: int = 1,
         max_num_process: int = 4,
         chunk_requests: int = 30,
-        time_chunk_requests: float = 0.1,
+        time_chunk_requests: float = 0.01,
     ) -> None:
         # Se guardan parámetros pasados por el usuario
         self._n: int = 1 if num_processes < 1 else num_processes
@@ -108,12 +110,13 @@ class ParallelProcess(metaclass=UniqueInstance):
         while True:
             try:
                 results: Any = self.output_queue.get(timeout=0.001)
-                for r_id, result in results.items():
+                print(f"{datetime.now()}: Llega data del proceso")
+                for r_id, result in list(results.items()):
                     self.requests[r_id]['result'] = result
                     self.requests[r_id]['status'] = RequestLevel.FINISHED
-                    #Avisa que ya se termino de procesar la consulta
+                    # Avisa que ya se termino de procesar la consulta
                     self.requests[r_id]['event'].set()
-            except Exception:
+            except queue.Empty:
                 pass
             # Esta línea es necesaria para manetner la función asíncrona
             await asyncio.sleep(0)
@@ -122,16 +125,21 @@ class ParallelProcess(metaclass=UniqueInstance):
         """_summary_
         """
         while True:
-            inputs = []
             # Se usa list() porque self.requests cambia dinámicamente, lo que afecta al bucle for.
-            for r_id, r_value in list(self.requests.items()):
-                if r_value['status'] == RequestLevel.START:
-                    self.requests[r_id]['status'] = RequestLevel.PROCESSING
-                    # En vez de hacer un array, hacer un dict con el id como key
-                    inputs.append({**r_value['input'], **{"id": r_id}})
-            if len(inputs) > 0:
-                for i in range(0, len(inputs), self.chunk_requests):
-                    self.input_queue.put((inputs[i: i + self.chunk_requests]))
+            def check_data(item):
+                status = item[1]['status'] == RequestLevel.START
+                self.requests[item[0]]['status'] = RequestLevel.PROCESSING
+                return status
+            print(f"{datetime.now()}: Se procesa data")
+            r_to_process = map(
+                lambda item: (item[0], {**item[1], 'event': None}),
+                filter(check_data, self.requests.items()))
+            print(f"{datetime.now()}: Se lotea data")
+            data = list(iter(lambda: tuple(islice(r_to_process, self.chunk_requests)), ()))
+            print(f"{datetime.now()}: Se envia data a proceso")
+            if len(data) > 0:
+                _ = [self.input_queue.put(d) for d in data]
+
             try:
                 # Espera un tiempo determinado por self.time_chunk_requests
                 await asyncio.wait_for(asyncio.sleep(self.time_chunk_requests), timeout=self.time_chunk_requests)
@@ -182,8 +190,8 @@ class ParallelProcess(metaclass=UniqueInstance):
         self.requests[request_id] = {
             'status': RequestLevel.START,
             'input': input,
-            'event':asyncio.Event()}
-        #Espera a que se termine d eprocesar la consulta
+            'event': asyncio.Event()}
+        # Espera a que se termine de procesar la consulta
         await self.requests[request_id]['event'].wait()
         result = self.requests[request_id]['result']
         del self.requests[request_id]
@@ -199,5 +207,9 @@ class ParallelProcess(metaclass=UniqueInstance):
         Returns:
             List[Any]: Lista de resultados de la ejecución del handler
         """
+        '''
+        Cambiar lógica. Si el usuario está enviando un lote de tareas a realizar, no requieren que cada una tenga un id y una tarea. En su lugar, crear lotes y asignarle un id a cada lote. Luego, en los procesos, procesar los lotes.
+        '''
+        print(f"{datetime.now()}: Llegan tareas")
         coroutines = [self.exe_task(input) for input in inputs]
         return await asyncio.gather(*coroutines)

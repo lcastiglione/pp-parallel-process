@@ -20,15 +20,12 @@ class Controller:
             output_queue (queue.Queue): Objeto Queue para enviar respuesta al hilo principal
             keep (bool, optional): Indica si el proceso se tiene que mantener vivo si o sí. Por default es False
         """
-        print(f"Se abre proceso {process_id}")
+        #print(f"Se abre proceso {process_id}")
         cls.load_config()
         start_time = time.time()
         while True and ((time.time() - start_time) < TIME_WAIT or keep):
             try:
-                params: Any = input_queue.get(timeout=1)
-                print(params)
-                print(f"Se procesa en {process_id}")
-                #time.sleep(20)
+                params: Any = input_queue.get(timeout=0.001)
                 results: Any = cls.execute(params)
                 output_queue.put(results)
                 start_time = time.time()
@@ -39,7 +36,7 @@ class Controller:
             except Exception as exc:
                 traceback.print_exc()
                 output_queue.put([exc] * len(params))
-        print(f"Se cierra proceso {process_id}")
+        #print(f"Se cierra proceso {process_id}")
 
     @classmethod
     def load_config(cls) -> None:
