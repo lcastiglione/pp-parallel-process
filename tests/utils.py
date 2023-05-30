@@ -11,8 +11,8 @@ class TestController(Controller):
     def execute(cls, params):
         results = {}
         for param in params:
-            method = param['method']
-            input_data = param['input']
-            results[param['id']]= method(input_data)
+            method = param[1]['input']['method']
+            input_data = param[1]['input']['input']
+            results[param[0]]= method(input_data)
         #print(results)
         return results

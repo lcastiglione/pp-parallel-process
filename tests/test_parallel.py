@@ -6,6 +6,7 @@ import unittest
 from pprocess.pprocess import ParallelProcess
 from pprocess.utils import find_small_missing_number
 from tests.utils import TestController
+from datetime import datetime
 
 def method(value):
     return value*3
@@ -25,7 +26,7 @@ class ParallelProcessTestCase(unittest.IsolatedAsyncioTestCase):
         '''Tareas asincrónas que se ejcutan antes de cada prueba.
         '''
         test_controller = TestController()
-        self.p_process = ParallelProcess(controller=test_controller, num_processes=4)
+        self.p_process = ParallelProcess(controller=test_controller, num_processes=1,chunk_requests=100000)
         await self.p_process.start()
         self.loop=asyncio.get_event_loop()
         self.loop.set_debug(False)
@@ -46,10 +47,12 @@ class ParallelProcessTestCase(unittest.IsolatedAsyncioTestCase):
         result = await self.p_process.exe_task({'method': method, 'input': 3})
         print("termine la tarea")
         print(result) """
-        size=10
+        size=100000
 
         start_t=time.time_ns()
         await self.p_process.exe_batch_task([{'method': method, 'input': i}for i in range(size)])
+        print(f"{datetime.now()}: Llegan resultados")
+        print()
         print(f"Tardo: {round((time.time_ns()-start_t)/1000000,2)}ms")
 
         start_t=time.time_ns()
