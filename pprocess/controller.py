@@ -5,50 +5,41 @@ import time
 from typing import Any
 
 
-TIME_WAIT: int = 60 * 60 * 1000  # 1 min
+TIME_WAIT: int = 60  # 1 min
 
 
 class Controller:
     """_summary_"""
 
     @classmethod
-    def worker(cls, input_queue: queue.Queue, output_queue: queue.Queue, keep: bool = False) -> None:
+    def worker(cls, process_id:int,input_queue: queue.Queue, output_queue: queue.Queue, keep: bool = False) -> None:
         """_summary_
 
         Args:
-            input_queue (queue.Queue): _description_
-            output_queue (queue.Queue): _description_
-            keep (bool, optional): _description_. Defaults to False.
+            input_queue (queue.Queue): Objeto Queue para recibir parámetros a procesar desde el hilo principal
+            output_queue (queue.Queue): Objeto Queue para enviar respuesta al hilo principal
+            keep (bool, optional): Indica si el proceso se tiene que mantener vivo si o sí. Por default es False
         """
-        count: int = 0
+        print(f"Se abre proceso {process_id}")
         cls.load_config()
-        while True and (count < TIME_WAIT or keep):
+        start_time = time.time()
+        while True and ((time.time() - start_time) < TIME_WAIT or keep):
             try:
-                params: Any = input_queue.get_nowait()
-                count = 0
-                # log(f"Se procesan {len(params)} peticiones en el proceso {process_id}")
+                params: Any = input_queue.get(timeout=1)
+                print(params)
+                print(f"Se procesa en {process_id}")
+                #time.sleep(20)
                 results: Any = cls.execute(params)
                 output_queue.put(results)
-            except KeyboardInterrupt as exc:
-                #print(exc)
-                # log(f"Error en el proceso {process_id}: {exc}", LOG_LEVEL.ERROR)
+                start_time = time.time()
+            except queue.Empty:
+                pass
+            except KeyboardInterrupt:
                 break
-            except queue.Empty as exc:
-                #print(exc)
-                count += 1
-            except Exception as exc:  # pylint: disable=W0718
-                # Sirve para capturar errores inesperados y no romper el proceso
-                # log(exc, LOG_LEVEL.ERROR)
+            except Exception as exc:
                 traceback.print_exc()
                 output_queue.put([exc] * len(params))
-            try:
-                time.sleep(0.001)
-            except KeyboardInterrupt as exc:
-                #print(exc)
-                break
-        if count >= TIME_WAIT:
-            # log(f"Se cierra automáticamente el proceso {process_id}")
-            pass
+        print(f"Se cierra proceso {process_id}")
 
     @classmethod
     def load_config(cls) -> None:

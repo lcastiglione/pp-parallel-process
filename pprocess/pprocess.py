@@ -4,12 +4,14 @@ Esta clase administra una serie de procesos
 
 import math
 import asyncio
+import time
+import queue
 from typing import Dict, Any, List
 from contextlib import suppress
 from multiprocessing import Queue, Process, cpu_count
 from pprocess.controller import Controller
 from pprocess.unique_instance import UniqueInstance
-from pprocess.utils import get_uid
+from pprocess.utils import find_small_missing_number, get_uid
 
 
 class RequestLevel:
@@ -39,7 +41,7 @@ class ParallelProcess(metaclass=UniqueInstance):
         self.chunk_requests = chunk_requests
         self.time_chunk_requests = time_chunk_requests
         # Se inician parámetros internos
-        self.processes: Dict[Any, Process] = {}
+        self.processes: Dict[int, Process] = {}
         self.requests: Dict[Any, Dict[str, Any]] = {}
         self.input_queue = Queue()
         self.output_queue = Queue()
@@ -91,11 +93,11 @@ class ParallelProcess(metaclass=UniqueInstance):
         Args:
             keep (bool, optional): _description_. Defaults to False.
         """
-        process_id = get_uid()
+        process_id = find_small_missing_number(self.processes.keys())
         process = Process(
             target=self.controller.worker,
             daemon=True,
-            args=(self.input_queue, self.output_queue, keep)
+            args=(process_id, self.input_queue, self.output_queue, keep)
         )
         process.start()
         self.processes[process_id] = process
@@ -104,19 +106,25 @@ class ParallelProcess(metaclass=UniqueInstance):
         """Controlador de requests de los usuarios
         """
         while True:
-            if not self.output_queue.empty():
-                results = self.output_queue.get_nowait()
+            try:
+                results: Any = self.output_queue.get(timeout=0.001)
                 for r_id, result in results.items():
                     self.requests[r_id]['result'] = result
                     self.requests[r_id]['status'] = RequestLevel.FINISHED
-            await asyncio.sleep(0.001)
+                    #Avisa que ya se termino de procesar la consulta
+                    self.requests[r_id]['event'].set()
+            except Exception:
+                pass
+            # Esta línea es necesaria para manetner la función asíncrona
+            await asyncio.sleep(0)
 
     async def _request_manager(self) -> None:
         """_summary_
         """
         while True:
             inputs = []
-            for r_id, r_value in self.requests.items():
+            # Se usa list() porque self.requests cambia dinámicamente, lo que afecta al bucle for.
+            for r_id, r_value in list(self.requests.items()):
                 if r_value['status'] == RequestLevel.START:
                     self.requests[r_id]['status'] = RequestLevel.PROCESSING
                     # En vez de hacer un array, hacer un dict con el id como key
@@ -124,14 +132,19 @@ class ParallelProcess(metaclass=UniqueInstance):
             if len(inputs) > 0:
                 for i in range(0, len(inputs), self.chunk_requests):
                     self.input_queue.put((inputs[i: i + self.chunk_requests]))
-            await asyncio.sleep(self.time_chunk_requests)
+            try:
+                # Espera un tiempo determinado por self.time_chunk_requests
+                await asyncio.wait_for(asyncio.sleep(self.time_chunk_requests), timeout=self.time_chunk_requests)
+            except asyncio.TimeoutError:
+                pass
 
     async def _process_manager(self) -> None:
         """Controlador de los procesos que se crean y destruyen
         """
         while True:
             # Se limpia buffer de procesos que ya están muertos
-            for p_id, process in self.processes.items():
+            # Se usa list() porque self.processes cambia dinámicamente, lo que afecta al bucle for.
+            for p_id, process in list(self.processes.items()):
                 if p_id in self.processes and not process.is_alive():
                     self._close_process(p_id)
                     del self.processes[p_id]
@@ -150,18 +163,11 @@ class ParallelProcess(metaclass=UniqueInstance):
                     num_new_p = num_new_p - num_p
                 # Se abren nuevos porcesos
                 _ = [self._start_process() for _ in range(num_new_p)]
-            await asyncio.sleep(0.001)
-
-    async def _wait_to_result(self, request_id: Any) -> None:
-        """Función para obtener el resultado de una solicitud
-
-        Args:
-            request_id (_type_): _description_
-        """
-        while True and not self.stop_request_manager:
-            if self.requests[request_id]['status'] == RequestLevel.FINISHED:
-                break
-            await asyncio.sleep(0.001)
+            try:
+                # Espera un tiempo determinado por self.time_chunk_requests
+                await asyncio.wait_for(asyncio.sleep(1), timeout=1)
+            except asyncio.TimeoutError:
+                pass
 
     async def exe_task(self, input: Dict) -> Any:
         """Procesa una tarea en el controller en un proceso aparte
@@ -174,8 +180,11 @@ class ParallelProcess(metaclass=UniqueInstance):
         """
         request_id = get_uid()
         self.requests[request_id] = {
-            'status': RequestLevel.START, 'input': input}
-        await self._wait_to_result(request_id)
+            'status': RequestLevel.START,
+            'input': input,
+            'event':asyncio.Event()}
+        #Espera a que se termine d eprocesar la consulta
+        await self.requests[request_id]['event'].wait()
         result = self.requests[request_id]['result']
         del self.requests[request_id]
         return result

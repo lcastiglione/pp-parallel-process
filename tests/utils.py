@@ -14,5 +14,5 @@ class TestController(Controller):
             method = param['method']
             input_data = param['input']
             results[param['id']]= method(input_data)
-        print(results)
+        #print(results)
         return results
