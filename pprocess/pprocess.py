@@ -33,7 +33,20 @@ class RequestLevel:
     PROCESSING: str = 'processing'
     FINISHED: str = 'finished'
 
+'''
+TODO
+Cosas a revisar:
 
+- Falta el manejo de errores
+- Qué pasa con el cliente si una operación no se termina de procesar?
+- Qué pasa con la aplicación si un cliente corta la comunicación?
+- Calcular rendimiento para un controller dado. Probar editando:
+    - Número de procesos
+    - Tamaño de lote (chunk)
+    - Tiempo de espera para armarun lote
+    - Enviando múltiples peticiones simples
+    - Enviando múltiples peticiones agrupadas
+'''
 class ParallelProcess(metaclass=UniqueInstance):
     """_summary_
     """
@@ -132,6 +145,13 @@ class ParallelProcess(metaclass=UniqueInstance):
         else:
             log("Llegan datos multiples")
             chunk_input = split_array(input, self.chunk_requests)
+            '''
+            TODO
+            En base a la cantidad de chunks, esperar a que llegen esa cantidad de respuestas por el
+            objeto queue. De esta manera, no es necesario crear otro queue en _batch_process.
+            Por otro lado, probar usando Event. Es más eficiente?. En este caso, el evento se usa
+            solo para avisar que ya está el resultado y que ya puede retirarlo de la memoria.
+            '''
             asyncio.Task(self._batch_process(chunk_input, queue_task))
             log("Se separan datos en lotes")
         result = await queue_task.get()
