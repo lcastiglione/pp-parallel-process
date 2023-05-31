@@ -24,10 +24,10 @@ class Controller:
         unused_process_time = time.time()
         while True and ((time.time() - unused_process_time) < TIME_WAIT or keep):
             try:
-                r_id, input_data = i_queue.get(timeout=0.001)
+                r_id, input_data,index = i_queue.get(timeout=0.001)
                 results: Any = cls.execute(input_data)
                 #time.sleep(20)
-                o_queue.put((process_id, r_id, results))
+                o_queue.put((process_id, r_id, results,index))
                 unused_process_time = time.time()
             except queue.Empty:
                 pass

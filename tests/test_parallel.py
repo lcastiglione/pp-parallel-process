@@ -47,8 +47,9 @@ class ParallelProcessTestCase(unittest.IsolatedAsyncioTestCase):
         batch=[i for i in range(size)]
         for i in range(2):
             start_t=time.time_ns()
-            await self.p_process.exe_task(batch)
+            result=await self.p_process.exe_task(batch)
             print(f"Tiempo de ejecución: {round((time.time_ns()-start_t)/1000000,2)}ms")
+            print(result)
 
         start_t=time.time_ns()
         [method(i)for i in batch]

@@ -13,11 +13,12 @@ from pprocess.controller import Controller
 from pprocess.unique_instance import UniqueInstance
 from pprocess.utils import find_small_missing_number, get_uid, split_array
 from datetime import datetime
+from itertools import chain
 
 times_storage = []
 
 
-def log(msg,add_time=True):
+def log(msg, add_time=True):
     t = datetime.now()
     elapsed = 0 if not times_storage else round((t-times_storage[-1]).total_seconds()*1000, 2)
     if add_time:
@@ -145,31 +146,36 @@ class ParallelProcess(metaclass=UniqueInstance):
             r_id = get_uid()
             queue_batch_task = asyncio.Queue()
             self.batch_requests[r_id] = queue_batch_task
-            for input_data in inputs_data:
-                self.input_queue.put((r_id, input_data))
+            for i, input_data in enumerate(inputs_data):
+                self.input_queue.put((r_id, input_data, i))
             log(f"Se envian {len(inputs_data)} datos")
-            asyncio.Task(self._wait_batch_process(queues, queue_batch_task, len(inputs_data)))  # Punto de delay minimo
+            results = await self._wait_batch_process(queue_batch_task, len(inputs_data))  # Punto de delay minimo
+            await queues.put(results)
         else:
             log("Se envian datos por lotes para varios clientes")
             for input_data, queue_task in inputs_data, queues:
                 r_id = get_uid()
                 self.batch_requests[r_id] = queue_task
-                self.input_queue.put((r_id, input_data))
+                self.input_queue.put((r_id, input_data, 0))
 
-    async def _wait_batch_process(self, queue_task, queue_batch_task, size):
+    async def _wait_batch_process(self, queue, size: int):
         """_summary_
 
         Args:
-            queue_batch_task (_type_): _description_
+            queue (_type_): _description_
             size (_type_): _description_
         """
-        results = []
         log("Empiezo espera")
-        for i in range(size):
-            # print(f"Procesar: {i}")
-            results.extend(await queue_batch_task.get())
+        coros = [queue.get() for _ in range(size)]
+        # Se espera que lleguen todos los resultados de cada lote, pertenciente a una request.
+        batches = await asyncio.gather(*coros)
         log("Termino espera")
-        return await queue_task.put(results)
+        batches = sorted(batches, key=lambda x: x[1])
+        results, _ = zip(*batches)
+        # Se juntan todos los resultados en un mismo array
+        results = list(chain.from_iterable(results))
+        log("Se ordenan datos")
+        return results
 
     async def _request_manager(self) -> None:
         """_summary_
@@ -195,9 +201,9 @@ class ParallelProcess(metaclass=UniqueInstance):
         """
         while True:
             try:
-                process_id, r_id, result = self.output_queue.get(timeout=0.001)
-                log("Llega data del proceso",add_time=False)
-                await self.batch_requests[r_id].put(result)
+                process_id, r_id, result, index = self.output_queue.get(timeout=0.001)
+                log("Llega data del proceso", add_time=False)
+                await self.batch_requests[r_id].put((result, index))
             except queue.Empty:
                 pass
             # Esta línea es necesaria para manetner la función asíncrona
