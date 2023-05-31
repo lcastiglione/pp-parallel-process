@@ -1,10 +1,8 @@
 ﻿"""_summary_"""
-from multiprocessing.connection import PipeConnection
-import traceback
 import queue
 import time
+import traceback
 from typing import Any
-
 
 TIME_WAIT: int = 60  # 1 min
 
@@ -13,7 +11,7 @@ class Controller:
     """_summary_"""
 
     @classmethod
-    def worker(cls, process_id: int, conn: PipeConnection, keep: bool = False) -> None:
+    def worker(cls, process_id: int, i_queue, o_queue, keep: bool = False) -> None:
         """_summary_
 
         Args:
@@ -21,25 +19,23 @@ class Controller:
             output_queue (queue.Queue): Objeto Queue para enviar respuesta al hilo principal
             keep (bool, optional): Indica si el proceso se tiene que mantener vivo si o sí. Por default es False
         """
-        #print(f"Se abre proceso {process_id}")
+        # print(f"Se abre proceso {process_id}")
         cls.load_config()
-        start_time = time.time()
-        while True and ((time.time() - start_time) < TIME_WAIT or keep):
+        unused_process_time = time.time()
+        while True and ((time.time() - unused_process_time) < TIME_WAIT or keep):
             try:
-                r_id, input_data = conn.recv()
-                print(f"Recibo a: {r_id}")
+                r_id, input_data = i_queue.get(timeout=0.001)
                 results: Any = cls.execute(input_data)
                 #time.sleep(20)
-                conn.send((r_id, results))
-                print(f"Responder a: {r_id}")
-                start_time = time.time()
+                o_queue.put((process_id, r_id, results))
+                unused_process_time = time.time()
             except queue.Empty:
                 pass
             except KeyboardInterrupt:
                 break
-            except Exception as exc:
+            except Exception as exc:  # pylint: disable=W0718
                 traceback.print_exc()
-                conn.send((r_id, exec))
+                o_queue.put((process_id, r_id, exc))
         # print(f"Se cierra proceso {process_id}")
 
     @classmethod

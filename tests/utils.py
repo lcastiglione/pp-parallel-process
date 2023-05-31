@@ -3,6 +3,15 @@
 from pprocess.controller import Controller
 
 
+def method(value):
+    """_summary_
+    """
+    result = 0
+    for _ in range(1000000):
+        result += value*3
+    return result
+
+
 class TestController(Controller):
     """_summary_
     """
@@ -11,8 +20,6 @@ class TestController(Controller):
     def execute(cls, params):
         results = []
         for param in params:
-            method = param['method']
-            input_data = param['input']
-            results.append(method(input_data))
-        #print(results)
+            results.append(method(param))
+        # print(results)
         return results

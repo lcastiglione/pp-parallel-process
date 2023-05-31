@@ -1,7 +1,6 @@
 ﻿"""Funciones utils del proyecto"""
 
-from itertools import islice
-from typing import List
+from typing import Any, List
 import uuid
 
 
@@ -31,6 +30,14 @@ def find_small_missing_number(list_n: List[int]):
             return i
 
 
-def split_array(array, n):
-    iter_array = iter(array)
-    return list(iter(lambda: list(islice(iter_array, n)), []))
+def split_array(array: List[Any], chunk: int) -> List[List[Any]]:
+    """Devide un array en 'n' arrays.
+
+    Args:
+        array (List[Any]): Array a dividir
+        n (int): Cantidad de subarrays requeridos
+
+    Returns:
+        List[List[Any]]: Array con los subarrays adentro
+    """
+    return [array[i:i + chunk] for i in range(0, len(array), chunk)]

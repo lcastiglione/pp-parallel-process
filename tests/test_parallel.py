@@ -5,12 +5,12 @@ import unittest
 
 from pprocess.pprocess import ParallelProcess
 from pprocess.utils import find_small_missing_number
-from tests.utils import TestController
+from tests.utils import TestController, method
 from datetime import datetime
 
-def method(value):
-    return value*3
 
+size=10
+num_processes=10
 
 class ParallelProcessTestCase(unittest.IsolatedAsyncioTestCase):
     '''Clase de prueba para ParallelProcess
@@ -27,7 +27,7 @@ class ParallelProcessTestCase(unittest.IsolatedAsyncioTestCase):
         '''
         test_controller = TestController()
         try:
-            self.p_process = ParallelProcess(controller=test_controller, num_processes=10,chunk_requests=100000)
+            self.p_process = ParallelProcess(controller=test_controller, num_processes=num_processes,chunk_requests=int(size/num_processes))
             await self.p_process.start()
         except Exception as exc:
             print(exc)
@@ -44,15 +44,15 @@ class ParallelProcessTestCase(unittest.IsolatedAsyncioTestCase):
         """_summary_
         """
         print("Ejecutar test")
-        size=100000
-        start_t=time.time_ns()
-        await self.p_process.exe_task([{'method': method, 'input': i}for i in range(size)])
-        print(f"{datetime.now()}: Llegan resultados")
-        print(f"Tardo: {round((time.time_ns()-start_t)/1000000,2)}ms")
+        batch=[i for i in range(size)]
+        for i in range(2):
+            start_t=time.time_ns()
+            await self.p_process.exe_task(batch)
+            print(f"Tiempo de ejecución: {round((time.time_ns()-start_t)/1000000,2)}ms")
 
         start_t=time.time_ns()
-        [method(i)for i in range(size)]
-        print(f"Tardo: {round((time.time_ns()-start_t)/1000000,2)}ms")
+        [method(i)for i in batch]
+        print(f"Tiempo de ejecución original: {round((time.time_ns()-start_t)/1000000,2)}ms")
 
         #print(results)
         #await asyncio.sleep(100)
