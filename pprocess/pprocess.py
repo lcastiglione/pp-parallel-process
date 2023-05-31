@@ -2,18 +2,16 @@
 Esta clase administra una serie de procesos
 """
 
-import math
 import asyncio
-import queue
-import threading
-from typing import Dict, Any, List
-from contextlib import suppress
-from multiprocessing import Queue, Process, cpu_count, Pipe
-from pprocess.controller import Controller
-from pprocess.unique_instance import UniqueInstance
-from pprocess.utils import find_small_missing_number, get_uid, split_array
 from datetime import datetime
 from itertools import chain
+from typing import Dict, Any, List
+from contextlib import suppress
+from pprocess.controller import Controller
+from pprocess.process import PoolProcess
+from pprocess.unique_instance import UniqueInstance
+from pprocess.utils import get_uid, split_array
+
 
 times_storage = []
 
@@ -33,6 +31,7 @@ class RequestLevel:
     PROCESSING: str = 'processing'
     FINISHED: str = 'finished'
 
+
 '''
 TODO
 Cosas a revisar:
@@ -47,6 +46,8 @@ Cosas a revisar:
     - Enviando múltiples peticiones simples
     - Enviando múltiples peticiones agrupadas
 '''
+
+
 class ParallelProcess(metaclass=UniqueInstance):
     """_summary_
     """
@@ -60,72 +61,36 @@ class ParallelProcess(metaclass=UniqueInstance):
         time_chunk_requests: float = 0.1,
     ) -> None:
         # Se guardan parámetros pasados por el usuario
-        self._n: int = 1 if num_processes < 1 else num_processes
-        self.controller = controller
-        self.max_num_process = max_num_process if max_num_process < cpu_count() else cpu_count()
         self.chunk_requests = chunk_requests
         self.time_chunk_requests = time_chunk_requests
         # Se inician parámetros internos
-        self.processes: Dict[int, Process] = {}
         self.requests: List[Dict[str, Any]] = []
         self.batch_requests: Dict[str:Any] = {}
-        self.input_queue = Queue()
-        self.output_queue = Queue()
         self.stop_request_manager = False
         self.stop_process_manager = False
         self.task_request_manager: asyncio.Task = None
-        self.task_process_manager: asyncio.Task = None
+        self.task_responses_manager: asyncio.Task = None
+        self.pool_process = PoolProcess(controller, num_processes, max_num_process)
         self.lock = asyncio.Lock()
 
     async def start(self) -> None:
         """_summary_
         """
         # Se cargan procesos. Uno solo se mantiene mientras esté activo el servidor, el resto son flexibles
-        self._start_process(keep=True)
-        _ = [self._start_process() for _ in range(self._n - 1)]
-
+        await self.pool_process.start()
         # Se inician los controladores en hilos independientes
         self.task_request_manager = asyncio.Task(self._request_manager())
-        self.task_process_manager = asyncio.Task(self._process_manager())
         self.task_responses_manager = asyncio.Task(self._responses_manager())
 
     async def close(self) -> None:
         """_summary_
         """
-        _ = [self._close_process(p_id) for p_id in self.processes]
-        self.input_queue.close()
-        self.output_queue.close()
         self.task_request_manager.cancel()
-        self.task_process_manager.cancel()
         self.task_responses_manager.cancel()
         with suppress(asyncio.CancelledError):
             await self.task_request_manager
-            await self.task_process_manager
             await self.task_responses_manager
-
-    def _close_process(self, process_id: Any) -> None:
-        """_summary_
-
-        Args:
-            process_id (_type_): _description_
-        """
-        if process_id in self.processes and self.processes[process_id].is_alive():
-            self.processes[process_id].terminate()
-
-    def _start_process(self, keep: bool = False) -> None:
-        """_summary_
-
-        Args:
-            keep (bool, optional): _description_. Defaults to False.
-        """
-        process_id = find_small_missing_number(self.processes.keys())
-        process = Process(
-            target=self.controller.worker,
-            daemon=True,
-            args=(process_id, self.input_queue, self.output_queue, keep)
-        )
-        process.start()
-        self.processes[process_id] = process
+        await self.pool_process.close()
 
     async def exe_task(self, input: List[Dict] | Dict) -> Any:
         global times_storage
@@ -167,7 +132,7 @@ class ParallelProcess(metaclass=UniqueInstance):
             queue_batch_task = asyncio.Queue()
             self.batch_requests[r_id] = queue_batch_task
             for i, input_data in enumerate(inputs_data):
-                self.input_queue.put((r_id, input_data, i))
+                await self.pool_process.put((r_id, input_data, i))
             log(f"Se envian {len(inputs_data)} datos")
             results = await self._wait_batch_process(queue_batch_task, len(inputs_data))  # Punto de delay minimo
             await queues.put(results)
@@ -176,7 +141,7 @@ class ParallelProcess(metaclass=UniqueInstance):
             for input_data, queue_task in inputs_data, queues:
                 r_id = get_uid()
                 self.batch_requests[r_id] = queue_task
-                self.input_queue.put((r_id, input_data, 0))
+                await self.pool_process.put((r_id, input_data, 0))
 
     async def _wait_batch_process(self, queue, size: int):
         """_summary_
@@ -220,42 +185,8 @@ class ParallelProcess(metaclass=UniqueInstance):
         """Controlador de requests de los usuarios
         """
         while True:
-            try:
-                process_id, r_id, result, index = self.output_queue.get(timeout=0.001)
+            result = await self.pool_process.get()
+            if result:
+                process_id, r_id, result, index = result
                 log("Llega data del proceso", add_time=False)
                 await self.batch_requests[r_id].put((result, index))
-            except queue.Empty:
-                pass
-            # Esta línea es necesaria para manetner la función asíncrona
-            await asyncio.sleep(0)
-
-    async def _process_manager(self) -> None:
-        """Controlador de los procesos que se crean y destruyen
-        """
-        while True:
-            # Se limpia buffer de procesos que ya están muertos
-            # Se usa list() porque self.processes cambia dinámicamente, lo que afecta al bucle for.
-            for p_id, process in list(self.processes.items()):
-                if p_id in self.processes and not process['process'].is_alive():
-                    self._close_process(p_id)
-                    del self.processes[p_id]
-            # Se obtienen parámetros actuales
-            num_p = len(list(self.processes.keys()))
-            num_r = len(self.requests)
-            # Se calculan los procesos que se necesitan
-            request_by_process = math.ceil(num_r / num_p)
-            # Si la carga del servidor está bien, no se abren nuevos procesos
-            if request_by_process > self.chunk_requests:
-                num_new_p = math.ceil(num_r / self.chunk_requests)
-                # No se pueden abrir máx procesos que el límite marcado
-                if num_new_p > self.max_num_process:
-                    num_new_p = self.max_num_process - num_p
-                else:
-                    num_new_p = num_new_p - num_p
-                # Se abren nuevos porcesos
-                _ = [self._start_process() for _ in range(num_new_p)]
-            try:
-                # Espera un tiempo determinado por self.time_chunk_requests
-                await asyncio.wait_for(asyncio.sleep(1), timeout=1)
-            except asyncio.TimeoutError:
-                pass

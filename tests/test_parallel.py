@@ -10,7 +10,7 @@ from datetime import datetime
 
 
 size=10
-num_processes=10
+num_processes=2
 
 class ParallelProcessTestCase(unittest.IsolatedAsyncioTestCase):
     '''Clase de prueba para ParallelProcess
@@ -43,17 +43,18 @@ class ParallelProcessTestCase(unittest.IsolatedAsyncioTestCase):
     async def test_start(self):
         """_summary_
         """
+        await asyncio.sleep(2)
         print("Ejecutar test")
         batch=[i for i in range(size)]
         for i in range(2):
             start_t=time.time_ns()
             result=await self.p_process.exe_task(batch)
             print(f"Tiempo de ejecución: {round((time.time_ns()-start_t)/1000000,2)}ms")
-            print(result)
-
+            #print(result)
+        await asyncio.sleep(2)
         start_t=time.time_ns()
         [method(i)for i in batch]
         print(f"Tiempo de ejecución original: {round((time.time_ns()-start_t)/1000000,2)}ms")
 
         #print(results)
-        #await asyncio.sleep(100)
+        #
