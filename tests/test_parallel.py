@@ -1,18 +1,24 @@
 ﻿"""Test unitarios para pprocess"""
-import asyncio
-import time
+
 import unittest
-
-from pprocess.pprocess import ParallelProcess
-from pprocess.utils import find_small_missing_number
-from tests.utils import TestController, method
-from datetime import datetime
+from pprocess import TaskProcess
+from tests.utils import TestController
 
 
-size=10
-num_processes=2
+# Listado de testa a realizar:
+#
+# ✔️ send
+# ✔️ send_bacth
+# ❌ start
+# ❌ close
+# ❌ _requests_manager
+# ❌ _repsonse_manager
+# ❌ Distintas configuraciones en el __init__
+# ❌ Error en ejecución de tarea en proceso remoto
+# ❌ Cancelación de request por parte del usuario
 
-class ParallelProcessTestCase(unittest.IsolatedAsyncioTestCase):
+
+class TaskProcessTestCase(unittest.IsolatedAsyncioTestCase):
     '''Clase de prueba para ParallelProcess
     '''
 
@@ -20,41 +26,33 @@ class ParallelProcessTestCase(unittest.IsolatedAsyncioTestCase):
         '''Inicializador de la clase EventBusTestCase.
         '''
         super().__init__(methodName=methodName)
-        self.p_process = None
+        self.task_process = None
 
     async def asyncSetUp(self):
         '''Tareas asincrónas que se ejcutan antes de cada prueba.
         '''
         test_controller = TestController()
         try:
-            self.p_process = ParallelProcess(controller=test_controller, num_processes=num_processes,chunk_requests=int(size/num_processes))
-            await self.p_process.start()
+            self.task_process = TaskProcess(controller=test_controller, num_processes=1)
+            await self.task_process.start()
         except Exception as exc:
             print(exc)
-        self.loop=asyncio.get_event_loop()
-        self.loop.set_debug(False)
 
     async def asyncTearDown(self):
         '''Tareas asincrónas que se ejcutan después de cada prueba.
         '''
-        await self.p_process.close()
-        asyncio.all_tasks(self.loop)
+        await self.task_process.close()
 
-    async def test_start(self):
-        """_summary_
-        """
-        await asyncio.sleep(2)
-        print("Ejecutar test")
-        batch=[i for i in range(size)]
-        for i in range(2):
-            start_t=time.time_ns()
-            result=await self.p_process.exe_task(batch)
-            print(f"Tiempo de ejecución: {round((time.time_ns()-start_t)/1000000,2)}ms")
-            #print(result)
-        await asyncio.sleep(2)
-        start_t=time.time_ns()
-        [method(i)for i in batch]
-        print(f"Tiempo de ejecución original: {round((time.time_ns()-start_t)/1000000,2)}ms")
+    async def test_send(self):
+        '''Test que pruba la función send de TaskProcess
+        '''
+        input_data = 1
+        result = await self.task_process.send(input_data)
+        self.assertEqual(result, 20000)
 
-        #print(results)
-        #
+    async def test_send_batch(self):
+        '''Test que pruba la función send de TaskProcess
+        '''
+        input_data = [0, 1, 2]
+        result = await self.task_process.send_batch(input_data)
+        self.assertEqual(result, [0, 20000, 40000])
