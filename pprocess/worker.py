@@ -27,10 +27,9 @@ class Worker(ABC):
         while True and ((time.time() - unused_process_time) < TIME_WAIT or keep):
             try:
                 params = i_queue.get(timeout=0.001)
-                #print(params)
                 r_ids, inputs_data =zip(*params)
                 results: Any = cls.execute(inputs_data)
-                time.sleep(20)
+                #time.sleep(20)
                 for r_id,result in zip(r_ids,results):
                     o_queue.put((process_id, r_id, result))
                 unused_process_time = time.time()

@@ -1,25 +1,38 @@
-﻿"""_summary_"""
+﻿"""Módulo con funciones utils para los tests"""
 
-from pprocess.controller import Controller
+import time
+from pprocess.worker import Worker
 
 
 def method(value):
     """_summary_
     """
+    start =time.time()
     result = 0
-    for _ in range(1000000):
-        result += value*3
+    for _ in range(20000):
+        result += value
+    #print(f"Tiempo method: {time.time()-start}s")
     return result
 
 
-class TestController(Controller):
+class TestController(Worker):
     """_summary_
     """
+
+    @classmethod
+    def load_config(cls):
+        pass
 
     @classmethod
     def execute(cls, params):
         results = []
         for param in params:
-            results.append(method(param))
+            if isinstance(param,list):
+                r=[]
+                for p in param:
+                    r.append(method(p))
+                results.append(r)
+            else:
+                results.append(method(param))
         # print(results)
         return results
