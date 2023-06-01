@@ -2,22 +2,21 @@
 Módulo que contiene la clase PoolProcess.
 """
 
-
 import asyncio
 from contextlib import suppress
 import queue
 from multiprocessing import Process, Queue, cpu_count
-from typing import Any, Dict
+from typing import Any, Dict, List
 import psutil
-from .controller import Controller
+from .worker import Worker
 from .utils.utils import find_small_missing_number
 
 
 class PoolProcess():
-    """Clase que representa un pool de procesos.
+    """Clase que gestiona un pool de procesos en forma permanente.
     """
 
-    def __init__(self, controller: Controller, num_processes: int = 1, max_num_process: int = 4):
+    def __init__(self, controller: Worker, num_processes: int = 1, max_num_process: int = 4):
         self._n: int = 1 if num_processes < 1 else num_processes
         self.max_num_process = max_num_process if max_num_process < cpu_count() else cpu_count()
         self.controller = controller
@@ -27,23 +26,24 @@ class PoolProcess():
         self.task_process_manager: asyncio.Task = None
 
     def _close_process(self, process_id: Any) -> None:
-        """_summary_
+        """Cierra un proceso por su ID
 
         Args:
-            process_id (_type_): _description_
+            process_id (_type_): ID del proceso a cerrar
         """
         if process_id in self.processes and self.processes[process_id]['process'].is_alive():
             self.processes[process_id]['process'].terminate()
 
     def _start_process(self, keep: bool = False) -> None:
-        """_summary_
+        """Inicia un proceso.
 
         Args:
-            keep (bool, optional): _description_. Defaults to False.
+            keep (bool, optional): Indica si el proceso se mantiene vivo, sin importar lo que pida el
+            gestor de procesos. Por default es False (El proceso puee cerrarse).
         """
         process_id = find_small_missing_number(self.processes.keys())
         process = Process(
-            target=self.controller.worker,
+            target=self.controller.loop,
             daemon=True,
             args=(process_id, self.input_queue, self.output_queue, keep)
         )
@@ -54,33 +54,36 @@ class PoolProcess():
         }
 
     async def start(self):
-        """_summary_
+        """Inicia la ejecución del controlador de procesos
         """
         self.task_process_manager = asyncio.Task(self._process_manager())
-        self._start_process(keep=True)
-        _ = [self._start_process() for _ in range(self._n - 1)]
+        for i in range(self._n):
+            self._start_process(keep=True if i == 0 else False)
 
     async def close(self) -> None:
-        """_summary_
+        """Cierra todas las ejecuciones del controlador de procesos.
         """
-        _ = [self._close_process(p_id) for p_id in self.processes]
+        for p_id in self.processes:
+            self._close_process(p_id)
         self.input_queue.close()
         self.output_queue.close()
         self.task_process_manager.cancel()
         with suppress(asyncio.CancelledError):
             await self.task_process_manager
 
-    async def put(self, data):
-        """_summary_
+    async def put(self, data: List[Any] | Any):
+        """Envia datos a los procesos
 
         Args:
-            data (_type_): _description_
+            data (_type_): Datos a enviar
         """
-        self.input_queue.put(data)
-        await asyncio.sleep(0)
+        data = data if isinstance(data, list) else [data]
+        for d in data:
+            self.input_queue.put(d)
+            await asyncio.sleep(0)
 
-    async def get(self):
-        """_summary_
+    async def get(self) -> Any | None:
+        """Devuleve un dato de algún proceso.
 
         Returns:
             _type_: _description_
