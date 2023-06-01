@@ -9,8 +9,8 @@ import queue
 from multiprocessing import Process, Queue, cpu_count
 from typing import Any, Dict
 import psutil
-from pprocess.controller import Controller
-from pprocess.utils import find_small_missing_number
+from .controller import Controller
+from .utils.utils import find_small_missing_number
 
 
 class PoolProcess():
