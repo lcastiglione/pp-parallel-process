@@ -3,16 +3,18 @@ import queue
 import time
 import traceback
 from typing import Any
+from abc import ABC, abstractmethod
 
 TIME_WAIT: int = 60  # 1 min
 
 
-class Controller:
-    """_summary_"""
+class Worker(ABC):
+    """Clase abstracta que define las funciones para generar un trabajor en otro proceso.
+    """
 
     @classmethod
-    def worker(cls, process_id: int, i_queue, o_queue, keep: bool = False) -> None:
-        """_summary_
+    def loop(cls, process_id: int, i_queue, o_queue, keep: bool = False) -> None:
+        """Función que ejecuta un loop eterno esperando a que lleguen peticiones y devolviendo datos procesados.
 
         Args:
             input_queue (queue.Queue): Objeto Queue para recibir parámetros a procesar desde el hilo principal
@@ -24,10 +26,13 @@ class Controller:
         unused_process_time = time.time()
         while True and ((time.time() - unused_process_time) < TIME_WAIT or keep):
             try:
-                r_id, input_data,index = i_queue.get(timeout=0.001)
-                results: Any = cls.execute(input_data)
-                #time.sleep(20)
-                o_queue.put((process_id, r_id, results,index))
+                params = i_queue.get(timeout=0.001)
+                #print(params)
+                r_ids, inputs_data =zip(*params)
+                results: Any = cls.execute(inputs_data)
+                time.sleep(20)
+                for r_id,result in zip(r_ids,results):
+                    o_queue.put((process_id, r_id, result))
                 unused_process_time = time.time()
             except queue.Empty:
                 pass
@@ -39,13 +44,16 @@ class Controller:
         # print(f"Se cierra proceso {process_id}")
 
     @classmethod
+    @abstractmethod
     def load_config(cls) -> None:
-        """_summary_"""
+        """Método abstracto para cargar variables o jecutar funciones previo a la ejecuión de execute.
+        """
 
     @classmethod
+    @abstractmethod
     def execute(cls, params: Any) -> Any:
-        """_summary_
+        """Método abstracto para ejecutar código pesado en otro proceso
 
         Args:
-            params (Any): _description_
+            params (Any): Parámetros necesarios para ejecutar la función.
         """
