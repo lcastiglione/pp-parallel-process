@@ -34,3 +34,9 @@ pipenv install git+https://github.com/lcastiglione/pp-pprocess#egg=pprocess
 
 ```python
 ```
+
+
+
+## Test de rendimiento
+
+El test de rendimiento permite probar un Worker personalizado para distintos parámetros de configuración en TaskProcess y analizar qué parámetros son los más convenientes.
