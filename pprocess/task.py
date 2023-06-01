@@ -7,10 +7,10 @@ from datetime import datetime
 from itertools import chain
 from typing import Dict, Any, List
 from contextlib import suppress
-from pprocess.controller import Controller
-from pprocess.process import PoolProcess
-from pprocess.unique_instance import UniqueInstance
-from pprocess.utils import get_uid, split_array
+from .controller import Controller
+from .process import PoolProcess
+from .utils.unique_instance import UniqueInstance
+from .utils.utils import get_uid, split_array
 
 
 times_storage = []
@@ -22,14 +22,6 @@ def log(msg, add_time=True):
     if add_time:
         times_storage.append(t)
     print(f"{t}: {msg} - ({elapsed} ms)")
-
-
-class RequestLevel:
-    """_summary_
-    """
-    START: str = 'start'
-    PROCESSING: str = 'processing'
-    FINISHED: str = 'finished'
 
 
 '''
@@ -48,7 +40,7 @@ Cosas a revisar:
 '''
 
 
-class ParallelProcess(metaclass=UniqueInstance):
+class TaskProcess(metaclass=UniqueInstance):
     """_summary_
     """
 
@@ -61,13 +53,12 @@ class ParallelProcess(metaclass=UniqueInstance):
         time_chunk_requests: float = 0.1,
     ) -> None:
         # Se guardan parámetros pasados por el usuario
-        self.chunk_requests = chunk_requests
+        self.chunk_requests = chunk_requests if chunk_requests > 0 else 1
         self.time_chunk_requests = time_chunk_requests
         # Se inician parámetros internos
         self.requests: List[Dict[str, Any]] = []
         self.batch_requests: Dict[str:Any] = {}
         self.stop_request_manager = False
-        self.stop_process_manager = False
         self.task_request_manager: asyncio.Task = None
         self.task_responses_manager: asyncio.Task = None
         self.pool_process = PoolProcess(controller, num_processes, max_num_process)
@@ -92,7 +83,7 @@ class ParallelProcess(metaclass=UniqueInstance):
             await self.task_responses_manager
         await self.pool_process.close()
 
-    async def exe_task(self, input: List[Dict] | Dict) -> Any:
+    async def exe_task(self, input: List[Any] | Any) -> Any:
         global times_storage
         """Procesa una tarea en el controller en un proceso aparte
 
