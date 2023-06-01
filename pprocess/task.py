@@ -53,6 +53,7 @@ class TaskProcess(metaclass=UniqueInstance):
             await self.task_request_manager
             await self.task_responses_manager
         await self.pool_process.close()
+        UniqueInstance.remove_instance(self.__class__)
 
     async def send(self, input_data: Any) -> Any:
         """Envia un parámetro a los procesos para que lo procesen
