@@ -1,0 +1,3 @@
+-e git+https://github.com/lcastiglione/pp-logs.git@6165918cba2b584bbaf151c3d7c7071ae66f5b5f#egg=logs
+psutil==5.9.5
+python-json-logger==2.0.7 ; python_version >= '3.6'
