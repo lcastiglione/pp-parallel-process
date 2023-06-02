@@ -1,9 +1,9 @@
 ﻿"""_summary_"""
 import queue
 import time
-import traceback
 from typing import Any
 from abc import ABC, abstractmethod
+from logs.logger import logger
 
 TIME_WAIT: int = 60  # 1 min
 
@@ -21,16 +21,16 @@ class Worker(ABC):
             output_queue (queue.Queue): Objeto Queue para enviar respuesta al hilo principal
             keep (bool, optional): Indica si el proceso se tiene que mantener vivo si o sí. Por default es False
         """
-        # print(f"Se abre proceso {process_id}")
+        logger.info("Se abre proceso %i", process_id)
         cls.load_config()
         unused_process_time = time.time()
         while True and ((time.time() - unused_process_time) < TIME_WAIT or keep):
             try:
                 params = i_queue.get(timeout=0.001)
-                r_ids, inputs_data =zip(*params)
+                r_ids, inputs_data = zip(*params)
                 results: Any = cls.execute(inputs_data)
-                #time.sleep(20)
-                for r_id,result in zip(r_ids,results):
+                # time.sleep(20)
+                for r_id, result in zip(r_ids, results):
                     o_queue.put((process_id, r_id, result))
                 unused_process_time = time.time()
             except queue.Empty:
@@ -38,9 +38,9 @@ class Worker(ABC):
             except KeyboardInterrupt:
                 break
             except Exception as exc:  # pylint: disable=W0718
-                traceback.print_exc()
+                logger.critical("Hubo un error inesperado en el proceso %i: %s", process_id, str(exc), exc_info=True)
                 o_queue.put((process_id, r_id, exc))
-        # print(f"Se cierra proceso {process_id}")
+        logger.info("Se cierra proceso %i", process_id)
 
     @classmethod
     @abstractmethod
