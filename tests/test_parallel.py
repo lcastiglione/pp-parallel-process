@@ -1,9 +1,14 @@
 ﻿"""Test unitarios para pprocess"""
 
 import unittest
+import logging
 from pprocess import TaskProcess
+from pprocess.utils.performance import activate_performance, clean_performance_data, get_performance_report
 from tests.utils import TestController
+from logs.logger import CustomLogger
 
+CustomLogger().set_level(logging.ERROR)
+activate_performance()
 
 # Listado de testa a realizar:
 #
@@ -42,10 +47,13 @@ class TaskProcessTestCase(unittest.IsolatedAsyncioTestCase):
         '''Tareas asincrónas que se ejcutan después de cada prueba.
         '''
         await self.task_process.close()
+        get_performance_report()
+        clean_performance_data()
 
     async def test_send(self):
         '''Test que pruba la función send de TaskProcess
         '''
+
         input_data = 1
         result = await self.task_process.send(input_data)
         self.assertEqual(result, 20000)
