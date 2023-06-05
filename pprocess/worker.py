@@ -21,7 +21,6 @@ class Worker(ABC):
             output_queue (queue.Queue): Objeto Queue para enviar respuesta al hilo principal
             keep (bool, optional): Indica si el proceso se tiene que mantener vivo si o sí. Por default es False
         """
-        logger.info("Se abre proceso %i", process_id)
         cls.load_config()
         unused_process_time = time.time()
         while True and ((time.time() - unused_process_time) < TIME_WAIT or keep):
@@ -38,9 +37,8 @@ class Worker(ABC):
             except KeyboardInterrupt:
                 break
             except Exception as exc:  # pylint: disable=W0718
-                logger.critical("Hubo un error inesperado en el proceso %i: %s", process_id, str(exc), exc_info=True)
-                o_queue.put((process_id, r_id, exc))
-        logger.info("Se cierra proceso %i", process_id)
+                #logger.critical("Hubo un error inesperado en el proceso %i: %s", process_id, str(exc), exc_info=True)
+                o_queue.put((process_id, r_ids, str(exc)))
 
     @classmethod
     @abstractmethod
