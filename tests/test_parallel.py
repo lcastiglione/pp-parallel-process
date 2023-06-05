@@ -81,4 +81,4 @@ class TaskProcessTestCase(unittest.IsolatedAsyncioTestCase):
         input_data = 1
         result = await self.task_process.send(input_data)
         self.assertEqual(result, 20000)
- """
+    """

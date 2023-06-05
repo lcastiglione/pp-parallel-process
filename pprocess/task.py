@@ -7,6 +7,8 @@ from itertools import chain
 from typing import Dict, Any, List
 from contextlib import suppress
 from logs.logger import logger
+
+from pprocess.exceptions import ResponseException
 from .storage import RequestStorage
 from .worker import Worker
 from .process import PoolProcess
@@ -72,15 +74,11 @@ class TaskProcess(metaclass=UniqueInstance):
         """
         check_id = checkpoint("Llega una requests a send()")
         queue_task = await self._request_storage.add(input_data)
-        try:
-            result = await queue_task.get()
-            checkpoint(check_id=check_id)
-            return result
-        except Exception as exc:
-            print("Ocurre un error")
-            print(exc)
-            checkpoint(check_id=check_id)
-
+        result, error = await queue_task.get()
+        checkpoint(check_id=check_id)
+        if error:
+            raise ResponseException(error)
+        return result
 
     async def send_batch(self, inputs_data: List[Any]) -> Any:
         """Envia un lote de parámetros a los procesos para que lo procesen
@@ -112,8 +110,7 @@ class TaskProcess(metaclass=UniqueInstance):
         """Controlador de requests de los usuarios
         """
         while True:
-            result = await self._pool_process.get()
-            if result:
-                process_id, r_id, result = result
-                print(result)
-                await self._request_storage.put(r_id, result)
+            reponse = await self._pool_process.get()
+            if reponse:
+                process_id, r_ids, results, errors = reponse
+                await self._request_storage.put(r_ids, results, errors)

@@ -27,18 +27,17 @@ class Worker(ABC):
             try:
                 params = i_queue.get(timeout=0.001)
                 r_ids, inputs_data = zip(*params)
-                results: Any = cls.execute(inputs_data)
+                results, errors = cls.execute(inputs_data)
                 # time.sleep(20)
-                for r_id, result in zip(r_ids, results):
-                    o_queue.put((process_id, r_id, result))
+                o_queue.put((process_id, r_ids, results, errors))
                 unused_process_time = time.time()
             except queue.Empty:
                 pass
             except KeyboardInterrupt:
                 break
             except Exception as exc:  # pylint: disable=W0718
-                #logger.critical("Hubo un error inesperado en el proceso %i: %s", process_id, str(exc), exc_info=True)
-                o_queue.put((process_id, r_ids, str(exc)))
+                # logger.critical("Hubo un error inesperado en el proceso %i: %s", process_id, str(exc), exc_info=True)
+                o_queue.put((process_id, r_ids, None, [str(exc)]*len(r_ids)))
 
     @classmethod
     @abstractmethod

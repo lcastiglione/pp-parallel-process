@@ -43,17 +43,22 @@ class RequestStorage():
         if bool(self._buffer):
             for r_id, values in list(self._buffer.items()):
                 data.append((r_id, values['input']))
-                #Se pasan los datos a una nueva variable para esperar las respuestas
+                # Se pasan los datos a una nueva variable para esperar las respuestas
                 self._requests[r_id] = values['queue']
                 del self._buffer[r_id]
         return data
 
-    async def put(self, r_id:str, result:Any)->None:
+    async def put(self, r_ids: List[str], results: List[Any], errors: List[Any]) -> None:
         """Envía el resultado al dueño original del queue y elimina la referencia en memoria.
 
         Args:
             r_id (str): ID de la request.
             result (Any): Resultado obtendio de los procesadores.
         """
-        await self._requests[r_id].put(result)
-        del self._requests[r_id]
+        if not results:
+            results=[None]*len(r_ids)
+        if not errors:
+            results=[None]*len(errors)
+        for r_id, result, error in zip(r_ids, results, errors):
+            await self._requests[r_id].put((result, error))
+            del self._requests[r_id]
