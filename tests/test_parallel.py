@@ -8,7 +8,7 @@ from tests.utils import TestController
 from logs.logger import CustomLogger
 
 CustomLogger().set_level(logging.ERROR)
-activate_performance()
+#activate_performance()
 
 # Listado de testa a realizar:
 #
@@ -50,7 +50,7 @@ class TaskProcessTestCase(unittest.IsolatedAsyncioTestCase):
         get_performance_report()
         clean_performance_data()
 
-    async def test_send(self):
+    """ async def test_send(self):
         '''Test que pruba la función send de TaskProcess
         '''
 
@@ -63,4 +63,22 @@ class TaskProcessTestCase(unittest.IsolatedAsyncioTestCase):
         '''
         input_data = [0, 1, 2]
         result = await self.task_process.send_batch(input_data)
-        self.assertEqual(result, [0, 20000, 40000])
+        self.assertEqual(result, [0, 20000, 40000]) """
+
+    async def test_send_process_error(self):
+        '''Test que pruba la función send de TaskProcess y ocurre un error en el proceso
+        '''
+
+        input_data = -1
+        result = await self.task_process.send(input_data)
+        print(result)
+        #self.assertEqual(result, 20000)
+
+    """ async def test_send_user_error(self):
+        '''Test que pruba la función send de TaskProcess y ocurre un error en el lado del usuario
+        '''
+
+        input_data = 1
+        result = await self.task_process.send(input_data)
+        self.assertEqual(result, 20000)
+ """

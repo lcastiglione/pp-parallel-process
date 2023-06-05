@@ -33,6 +33,9 @@ class TestController(Worker):
                     r.append(method(p))
                 results.append(r)
             else:
+                print("Resultado simple",param)
+                if param==-1:
+                    raise Exception("Simulando error desde un proceso")
                 results.append(method(param))
         # print(results)
         return results
