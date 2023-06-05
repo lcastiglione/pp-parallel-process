@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "195cf9112308fac64a093fe3cba11cf557b561ceaf5cc6e8d898f7c9ba937b0a"
+            "sha256": "82e7bc96e9afe756983a07a6e92b7346b8ecb545780b2bbd945023317f8523cb"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -17,7 +17,6 @@
     },
     "default": {
         "logs": {
-            "editable": true,
             "git": "https://github.com/lcastiglione/pp-logs.git",
             "ref": "6165918cba2b584bbaf151c3d7c7071ae66f5b5f"
         },
@@ -58,10 +57,6 @@
             ],
             "index": "pypi",
             "version": "==2.0.2"
-        },
-        "pprocess": {
-            "path": ".",
-            "version": "==0.0.1"
         },
         "pycodestyle": {
             "hashes": [

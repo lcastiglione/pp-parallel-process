@@ -5,11 +5,10 @@ name = "pypi"
 
 [packages]
 psutil = "*"
-logs = {editable = true, ref = "0.0.1", git = "https://github.com/lcastiglione/pp-logs.git"}
+logs = {ref = "0.0.1", git = "https://github.com/lcastiglione/pp-logs.git"}
 
 [dev-packages]
 autopep8 = "*"
-pprocess = {path = "."}
 
 [requires]
 python_version = "3.11"
