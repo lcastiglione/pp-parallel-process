@@ -36,7 +36,7 @@ git push --delete origin <tag>      # Subir tag a repositorio remoto
 ## Instalación
 
 ```bash
-pipenv install git+https://github.com/lcastiglione/pp-pprocess#egg=pprocess
+pipenv install git+https://github.com/lcastiglione/pp-pprocess.git@<tag>#egg=pprocess
 ```
 
 
@@ -69,7 +69,7 @@ from myproject.controller import CustomController
 
 #Cargar parámetros
 controller = CustomController()
-self.task_process = TaskProcess(controller=controller, 
+self.task_process = TaskProcess(controller=controller,
                                 num_processes=2,
                                 max_num_process: int = 4,
                                 chunk_requests: int = 30,
