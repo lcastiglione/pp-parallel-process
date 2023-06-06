@@ -1,4 +1,5 @@
-﻿"""_summary_"""
+﻿"""Módulo encargado de definir las funciones del worker quetrabaj en un proceso separado"""
+
 import queue
 import time
 from typing import Any
@@ -6,7 +7,6 @@ from abc import ABC, abstractmethod
 from logs.logger import logger
 
 TIME_WAIT: int = 60  # 1 min
-
 
 class Worker(ABC):
     """Clase abstracta que define las funciones para generar un trabajor en otro proceso.
@@ -28,7 +28,6 @@ class Worker(ABC):
                 params = i_queue.get(timeout=0.001)
                 r_ids, inputs_data = zip(*params)
                 results, errors = cls.execute(inputs_data)
-                # time.sleep(20)
                 o_queue.put((process_id, r_ids, results, errors))
                 unused_process_time = time.time()
             except queue.Empty:
@@ -36,7 +35,7 @@ class Worker(ABC):
             except KeyboardInterrupt:
                 break
             except Exception as exc:  # pylint: disable=W0718
-                # logger.critical("Hubo un error inesperado en el proceso %i: %s", process_id, str(exc), exc_info=True)
+                logger.critical("Hubo un error inesperado en el proceso %i: %s", process_id, str(exc), exc_info=True)
                 o_queue.put((process_id, r_ids, None, [str(exc)]*len(r_ids)))
 
     @classmethod
