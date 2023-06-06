@@ -4,11 +4,10 @@ Módulo que gestiona las peticiones del usuario
 
 import asyncio
 from itertools import chain
-from typing import Dict, Any, List
+from typing import Any, List
 from contextlib import suppress
 from logs.logger import logger
-
-from pprocess.exceptions import ResponseException
+from .exceptions import ResponseProcessException, UserProcessException
 from .storage import RequestStorage
 from .worker import Worker
 from .process import PoolProcess
@@ -73,11 +72,15 @@ class TaskProcess(metaclass=UniqueInstance):
             Any: Resultado de la ejecución del controller
         """
         check_id = checkpoint("Llega una requests a send()")
-        queue_task = await self._request_storage.add(input_data)
-        result, error = await queue_task.get()
+        r_id, queue_task = await self._request_storage.add(input_data)
+        try:
+            result, error = await queue_task.get()
+        except asyncio.exceptions.CancelledError as exc:
+            await self._request_storage.remove(r_id)
+            raise UserProcessException() from exc
         checkpoint(check_id=check_id)
         if error:
-            raise ResponseException(error)
+            raise ResponseProcessException(error)
         return result
 
     async def send_batch(self, inputs_data: List[Any]) -> Any:
@@ -110,7 +113,7 @@ class TaskProcess(metaclass=UniqueInstance):
         """Controlador de requests de los usuarios
         """
         while True:
-            reponse = await self._pool_process.get()
-            if reponse:
-                process_id, r_ids, results, errors = reponse
+            response = await self._pool_process.get()
+            if response:
+                process_id, r_ids, results, errors = response
                 await self._request_storage.put(r_ids, results, errors)
