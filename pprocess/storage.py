@@ -30,7 +30,20 @@ class RequestStorage():
             "input": input,
             "queue": queue_task
         }
-        return queue_task
+        return r_id,queue_task
+
+    async def remove(self, r_id:str)->None:
+        """Remueve de la lista de requets y del buffer una tarea
+
+        Args:
+            r_id (str): ID de la tarea a remover
+        """
+        if r_id in self._buffer:
+            del self._buffer[r_id]
+            await asyncio.sleep(0)
+        if r_id in self._requests:
+            del self._requests[r_id]
+            await asyncio.sleep(0)
 
     async def get_data(self) -> List[tuple]:
         """Devuleve los datos almacenados en memoria y limpia el buffer.
@@ -58,7 +71,8 @@ class RequestStorage():
         if not results:
             results=[None]*len(r_ids)
         if not errors:
-            results=[None]*len(errors)
+            errors=[None]*len(r_ids)
         for r_id, result, error in zip(r_ids, results, errors):
-            await self._requests[r_id].put((result, error))
-            del self._requests[r_id]
+            if r_id in self._requests:
+                await self._requests[r_id].put((result, error))
+                del self._requests[r_id]
