@@ -36,7 +36,7 @@ git push --delete origin <tag>      # Subir tag a repositorio remoto
 ## Instalación
 
 ```bash
-pipenv install git+https://github.com/lcastiglione/pp-pprocess.git@<tag>#egg=pprocess
+pipenv install git+https://github.com/lcastiglione/pp-parallel-process.git@<tag>#egg=pprocess
 ```
 
 
