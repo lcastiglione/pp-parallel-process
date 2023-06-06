@@ -6,7 +6,7 @@ from typing import Any
 from abc import ABC, abstractmethod
 from logs.logger import logger
 
-TIME_WAIT: int = 60  # 1 min
+TIME_WAIT: int = 1800  # 30 min
 
 class Worker(ABC):
     """Clase abstracta que define las funciones para generar un trabajor en otro proceso.
