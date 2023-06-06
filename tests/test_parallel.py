@@ -11,17 +11,6 @@ from tests.utils import TestController
 
 
 CustomLogger().set_level(logging.CRITICAL + 1)
-# Listado de testa a realizar:
-#
-# ✔️ send
-# ✔️ send_bacth
-# ❌ start
-# ❌ close
-# ❌ _requests_manager
-# ❌ _repsonse_manager
-# ❌ Distintas configuraciones en el __init__
-# ✔️ Error en ejecución de tarea en proceso remoto
-# ✔️ Cancelación de request por parte del usuario
 
 
 class TaskProcessTestCase(unittest.IsolatedAsyncioTestCase):
