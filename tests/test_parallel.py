@@ -3,7 +3,7 @@
 import asyncio
 import unittest
 import logging
-from logs.logger import CustomLogger,logger
+from logs.logger import CustomLogger
 from pprocess import TaskProcess
 from pprocess.exceptions import ResponseProcessException, ExternalProcessException
 from pprocess.utils.performance import clean_performance_data, get_performance_report
@@ -112,3 +112,9 @@ class TaskProcessTestCase(unittest.IsolatedAsyncioTestCase):
             await task
         self.assertEqual(str(catch_exc.exception), "Un suceso externo corto la ejecucion del procesador de tareas")
         self.assertEqual(len(requests.keys()), 0)
+
+    """ async def test_cpu(self):
+        '''Test para probar el controlador de procesos para la creación y cierre de procesos autónoma según el consumo de CPU. Activar el test solo cuando se pruebe esto.
+        '''
+        asyncio.Task(self.task_process.send(-2))
+        await asyncio.sleep(20) """
