@@ -37,8 +37,11 @@ class TestController(Worker):
                     raise Exception("Simulando error desde un proceso")
                 if param==2:
                     time.sleep(1)
-                    results.append(method(param))
-                else:
-                    results.append(method(param))
+                if param==-2:
+                    for i in range(20000):
+                       results.append(method(i))
+                    print("Termino tarea pesada")
+                    continue
+                results.append(method(param))
         # print(results)
         return results,None

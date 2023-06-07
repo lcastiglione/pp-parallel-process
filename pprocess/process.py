@@ -6,18 +6,23 @@ import asyncio
 from contextlib import suppress
 import queue
 from multiprocessing import Process, Queue, cpu_count
+import time
 from typing import Any, Dict, List
 import psutil
 from logs.logger import logger
 from .worker import Worker
 from .utils.utils import find_small_missing_number
 
+TIME_WAIT_TO_CREATE_NEW_PROCESS = 60*2  # 2 minutos
+TIME_WAIT_TO_CHECK_CPU = 1  # 1 segundo
+MAX_CPU_USAGE = 70  # 70%
+
 
 class PoolProcess():
     """Clase que gestiona un pool de procesos en forma permanente.
     """
 
-    def __init__(self, controller: Worker, num_processes: int = 1, max_num_process: int = 4):
+    def __init__(self, controller: Worker, num_processes: int, max_num_process: int):
         self._n: int = 1 if num_processes < 1 else num_processes
         self._max_num_process = max_num_process if max_num_process < cpu_count() else cpu_count()
         self._controller = controller
@@ -34,7 +39,7 @@ class PoolProcess():
         """
         if process_id in self._processes and self._processes[process_id]['process'].is_alive():
             self._processes[process_id]['process'].terminate()
-            logger.info("Se cierra proceso %i", process_id)
+            logger.info("Se fuerza el cierre del proceso %i", process_id)
 
     def _start_process(self, keep: bool = False) -> None:
         """Inicia un proceso.
@@ -61,7 +66,6 @@ class PoolProcess():
         logger.info("Se inicia el pool de procesos")
         self._task_process_manager = asyncio.Task(self._process_manager())
         for i in range(self._n):
-            logger.info("Se abre proceso %i", i)
             self._start_process(keep=True if i == 0 else False)
 
     async def close(self) -> None:
@@ -99,26 +103,51 @@ class PoolProcess():
         except queue.Empty:
             return
 
-    async def _process_manager(self) -> None:
-        """Controlador de los procesos que se crean y destruyen
+    async def _get_avg_usage_cpu(self, cpu_qty:int)->float:
+        """Devulelve el consumo promedio de todos los procesos activos.
+
+        Args:
+            cpu_qty (int): Cantiad de cpus activos.
+        Returns:
+            float: Promedio de consumo.
         """
-        # TODO
-        # La idea es ir registrando los consumos de procesador. Si los consumos de los procesadores actuales es alto durante determinado
-        # tiempo, se abren más procesos sino, se pueden cerrar (Ver cómo afecta al loop esto)
-        # Posible método: Calcular el promedio del consumo actual de CPU y contar cuánto tiempo se mantiene por encima del 50%. Si es así,
-        # se abre un nuevo proceso.
-        # Se vuelve a repetir el cálculo hasta que se llegue al máximo de procesadores.
-        # Lo mismo ocurre cuando no se está usando la CPU. Después de determinado tiempo se empiezan a cerrar procesos uno a uno hasta
-        # llegar al mínimo
+        cpu_avg = 0
+        for p_id, values in list(self._processes.items()):
+            if not values['process'].is_alive():
+                del self._processes[p_id]
+            else:
+                cpu_percent = self._processes[p_id]['measure'].cpu_percent(interval=0)
+                cpu_avg += cpu_percent
+                await asyncio.sleep(0)
+        return cpu_avg/cpu_qty
+
+    def _check_processes_capacity(self, time_cpu_max:float, cpu_qty:int)->bool:
+        """Revisa si es tiempo de crear un nuevo proceso y si ya se llegó a la máxima cantidad de procesos posibles.
+
+        Args:
+            time_cpu_max (float): Tiempo que las cpu llevan trabajando al máximo.
+            cpu_qty (int): Cantidad de procesos actuales.
+
+        Returns:
+            bool: True si hay que crear un nuevo proceso y False si hay que esperar.
+        """
+        return (time.time()-time_cpu_max) >= TIME_WAIT_TO_CREATE_NEW_PROCESS and \
+            cpu_qty < self._max_num_process
+
+    async def _process_manager(self) -> None:
+        """Controlador de los procesos que se crean y destruyen.
+        """
+        time_cpu_max = 0
         while True:
-            cpu_avg = 0
-            for p_id, values in self._processes.items():
-                if values['process'].is_alive():
-                    cpu_percent = self._processes[p_id]['measure'].cpu_percent(interval=0)
-                    cpu_avg += cpu_percent
-            # print(f"Consumo promedio: {round(cpu_avg/len(self.processes), 2)}%")
-            try:
-                # Espera un tiempo determinado por self.time_chunk_requests
-                await asyncio.wait_for(asyncio.sleep(0.1), timeout=0.1)
-            except asyncio.TimeoutError:
-                pass
+            await asyncio.sleep(TIME_WAIT_TO_CHECK_CPU)
+            cpu_qty = len(self._processes.keys())
+            all_cpu_usage = await self._get_avg_usage_cpu(cpu_qty)
+            if all_cpu_usage < MAX_CPU_USAGE:
+                time_cpu_max = 0
+                continue
+            if time_cpu_max == 0:
+                time_cpu_max = time.time()
+                continue
+            if self._check_processes_capacity(time_cpu_max, cpu_qty):
+                self._start_process()
+                time_cpu_max = 0
