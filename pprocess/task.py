@@ -7,7 +7,7 @@ from itertools import chain
 from typing import Any, List
 from contextlib import suppress
 from logs.logger import logger
-from .exceptions import ResponseProcessException, UserProcessException
+from .exceptions import ResponseProcessException, ExternalProcessException
 from .storage import RequestStorage
 from .worker import Worker
 from .process import PoolProcess
@@ -77,7 +77,7 @@ class TaskProcess(metaclass=UniqueInstance):
             result, error = await queue_task.get()
         except asyncio.exceptions.CancelledError as exc:
             await self._request_storage.remove(r_id)
-            raise UserProcessException() from exc
+            raise ExternalProcessException() from exc
         checkpoint(check_id=check_id)
         if error:
             raise ResponseProcessException(error)

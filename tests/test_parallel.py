@@ -5,7 +5,7 @@ import unittest
 import logging
 from logs.logger import CustomLogger,logger
 from pprocess import TaskProcess
-from pprocess.exceptions import ResponseProcessException, UserProcessException
+from pprocess.exceptions import ResponseProcessException, ExternalProcessException
 from pprocess.utils.performance import clean_performance_data, get_performance_report
 from tests.utils import TestController
 
@@ -92,10 +92,10 @@ class TaskProcessTestCase(unittest.IsolatedAsyncioTestCase):
         await asyncio.sleep(0.1)
         requests = self.task_process._request_storage._requests  # pylint: disable=W0212
         self.assertEqual(len(requests.keys()), 1)
-        with self.assertRaises(UserProcessException) as catch_exc:
+        with self.assertRaises(ExternalProcessException) as catch_exc:
             task.cancel()
             await task
-        self.assertEqual(str(catch_exc.exception), "Se corto la ejecucion de la tarea")
+        self.assertEqual(str(catch_exc.exception), "Un suceso externo corto la ejecucion del procesador de tareas")
         self.assertEqual(len(requests.keys()), 0)
 
     async def test_send_batch_requests_user_error(self):
@@ -107,8 +107,8 @@ class TaskProcessTestCase(unittest.IsolatedAsyncioTestCase):
         await asyncio.sleep(0.1)
         requests = self.task_process._request_storage._requests  # pylint: disable=W0212
         self.assertEqual(len(requests.keys()), 2)
-        with self.assertRaises(UserProcessException) as catch_exc:
+        with self.assertRaises(ExternalProcessException) as catch_exc:
             task.cancel()
             await task
-        self.assertEqual(str(catch_exc.exception), "Se corto la ejecucion de la tarea")
+        self.assertEqual(str(catch_exc.exception), "Un suceso externo corto la ejecucion del procesador de tareas")
         self.assertEqual(len(requests.keys()), 0)

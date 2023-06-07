@@ -15,7 +15,7 @@ class ResponseProcessException(Exception):
         logger.error("Se produjo un error al procesar la tarea: %s", msg, exc_info=True)
         super().__init__(f"Se produjo un error al procesar la tarea: {msg}")
 
-class UserProcessException(Exception):
+class ExternalProcessException(Exception):
     """_summary_
 
     Args:
@@ -23,5 +23,5 @@ class UserProcessException(Exception):
     """
 
     def __init__(self):
-        logger.error("Se corto la ejecucion de la tarea", exc_info=True)
-        super().__init__("Se corto la ejecucion de la tarea")
+        logger.error("Un suceso externo corto la ejecucion del procesador de tareas", exc_info=True)
+        super().__init__("Un suceso externo corto la ejecucion del procesador de tareas")
