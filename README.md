@@ -14,7 +14,7 @@ Ejemplo de usos:
 
 EL funcionamiento de la librería se basa en recibir peticiones de trabajo, agrupar las peticiones simples en lotes en una ventana de tiempo y luego enviar dichos lotes a los procesos disponibles. No importa si las peticiones fueron hechas por distintos usuarios ya que cada petición tiene un ID que permite rastrear el origen de la petición y devolver el resultado correcto al usuario correspondiente.
 
-Además, el sistema crea y destruye procesos en forma dinámica y automática, cuando el uso de la CPU sea más o menos intensivo. 
+Además, el sistema crea y destruye procesos en forma dinámica y automática, cuando el uso de la CPU sea más o menos intensivo.
 
 Es importante tener en cuenta, que los parámetros de entrada que se van a usar para realizar cálculos tienen que ser lo más simples posibles ya que los mismos, cuando se envían al proceso, sufren un pre-procesamiento que genera un delay. Mientras más complejo es el objeto, más tiempo se tarda en el pre-procesamiento y, por ende, más tiempo se tarda en la ejecución de la petición. Evitar enviar funciones u objetos complejos.
 
@@ -27,6 +27,13 @@ Crear archivo `requirements.txt`:
 ```bash
 pipenv requirements > requirements.txt
 ```
+
+Si en el archivo `requirements.txt` hay una dependencia que viene de Github, deberá estar definida de la siguiente manera:
+```txt
+<name> @ git+https://github.com/<user>/<repo_name>.git@<id>#egg=<package>
+```
+
+
 
 Tests:
 
@@ -83,7 +90,7 @@ from myproject.controller import CustomController
 
 #Cargar parámetros
 controller = CustomController()
-self.task_process = TaskProcess(controller=controller, 
+self.task_process = TaskProcess(controller=controller,
                                 num_processes=2,
                                 max_num_process: int = 4,
                                 chunk_requests: int = 30,
