@@ -47,8 +47,8 @@ python -m unittest discover -s 'tests' -p 'test_parallel.py'
 
 ```bash
 git tag -a <tag> -m "<descripcion>" # Crear tag local
-git push origin <tag> 				# Subir tag a repositorio remoto
-git tag -d <tag> 					# Eliminar tag en forma local
+git push origin <tag>               # Subir tag a repositorio remoto
+git tag -d <tag>                    # Eliminar tag en forma local
 git push --delete origin <tag>      # Subir tag a repositorio remoto
 ```
 
