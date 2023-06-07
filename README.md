@@ -64,9 +64,11 @@ pipenv install git+https://github.com/lcastiglione/pp-pprocess#egg=pprocess
 
 ## Ejemplo de uso
 
-`CustomController.py`:
+`controller.py`:
 
 ```python
+from pprocess import Worker
+
 class CustomController(Worker):
 
     @classmethod
@@ -90,18 +92,18 @@ from myproject.controller import CustomController
 
 #Cargar parámetros
 controller = CustomController()
-self.task_process = TaskProcess(controller=controller,
+task_process = TaskProcess(controller=controller,
                                 num_processes=2,
-                                max_num_process: int = 4,
-                                chunk_requests: int = 30,
-                                time_chunk_requests: int = 10)#En ms
+                                max_num_process = 4,
+                                chunk_requests = 30,
+                                time_chunk_requests = 10)#En ms
 #Iniciar el gestor de tareas en procesos paralelos
-await self.task_process.start()
+await task_process.start()
 
 ...
 input_data= ...
 try:
-	result = await self.task_process.send(input_data)
+	result = await task_process.send(input_data)
     print(result)
 except ResponseProcessException as exc:
     pass
@@ -110,7 +112,7 @@ except ResponseProcessException as exc:
 ...
 input_data= [...]
 try:
-	results = await self.task_process.send_batch(input_data)
+	results = await task_process.send_batch(input_data)
     print(results)
 except ResponseProcessException as exc:
     pass
