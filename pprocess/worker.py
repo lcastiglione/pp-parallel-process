@@ -6,7 +6,8 @@ from typing import Any
 from abc import ABC, abstractmethod
 from logs.logger import logger
 
-TIME_WAIT: int = 60*30 # 30 min
+TIME_WAIT: int = 60*30  # 30 min
+
 
 class Worker(ABC):
     """Clase abstracta que define las funciones para generar un trabajor en otro proceso.
@@ -36,6 +37,9 @@ class Worker(ABC):
             except KeyboardInterrupt:
                 break
             except Exception as exc:  # pylint: disable=W0718
+                # Todos los posibles errores que puedan ocurrir en el proceso, deberían estar cubiertos
+                # por la implementación del worker. Si un error no es tenido en cuenta, se captura acá y se
+                # los cataloga como crítico.
                 logger.critical("Hubo un error inesperado en el proceso %i: %s", process_id, str(exc), exc_info=True)
                 o_queue.put((process_id, r_ids, None, [str(exc)]*len(r_ids)))
         logger.info("Se cierra el proceso %i", process_id)

@@ -61,7 +61,7 @@ class RequestStorage():
                 del self._buffer[r_id]
         return data
 
-    async def put(self, r_ids: List[str], results: List[Any], errors: List[Any]) -> None:
+    async def put(self, r_ids: List[str], results: List[Any], errors: List[Any],process_id:int) -> None:
         """Envía el resultado al dueño original del queue y elimina la referencia en memoria.
 
         Args:
@@ -74,5 +74,5 @@ class RequestStorage():
             errors=[None]*len(r_ids)
         for r_id, result, error in zip(r_ids, results, errors):
             if r_id in self._requests:
-                await self._requests[r_id].put((result, error))
+                await self._requests[r_id].put((process_id,result, error))
                 del self._requests[r_id]

@@ -9,7 +9,6 @@ from multiprocessing import Process, Queue, cpu_count
 import time
 from typing import Any, Dict, List
 import psutil
-from logs.logger import logger
 from .worker import Worker
 from .utils.utils import find_small_missing_number
 
@@ -39,7 +38,6 @@ class PoolProcess():
         """
         if process_id in self._processes and self._processes[process_id]['process'].is_alive():
             self._processes[process_id]['process'].terminate()
-            logger.info("Se fuerza el cierre del proceso %i", process_id)
 
     def _start_process(self, keep: bool = False) -> None:
         """Inicia un proceso.
@@ -63,7 +61,6 @@ class PoolProcess():
     async def start(self):
         """Inicia la ejecución del controlador de procesos
         """
-        logger.info("Se inicia el pool de procesos")
         self._task_process_manager = asyncio.Task(self._process_manager())
         for i in range(self._n):
             self._start_process(keep=True if i == 0 else False)
@@ -78,7 +75,6 @@ class PoolProcess():
         self._task_process_manager.cancel()
         with suppress(asyncio.CancelledError):
             await self._task_process_manager
-        logger.info("Se cierra el pool de procesos")
 
     async def put(self, data: List[Any] | Any):
         """Envia datos a los procesos

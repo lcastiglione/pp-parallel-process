@@ -6,7 +6,6 @@ import asyncio
 from itertools import chain
 from typing import Any, List
 from contextlib import suppress
-from logs.logger import logger
 from .exceptions import ResponseProcessException, ExternalProcessException
 from .storage import RequestStorage
 from .worker import Worker
@@ -39,7 +38,6 @@ class TaskProcess(metaclass=UniqueInstance):
     async def start(self) -> None:
         """Se inicia el procesador de tareas.
         """
-        logger.info("Iniciar procesamiento de tareas")
         check_id = checkpoint("Iniciar procesamiento de tareas")
         # Se cargan procesos. Uno solo se mantiene mientras esté activo el servidor, el resto son flexibles
         await self._pool_process.start()
@@ -51,7 +49,6 @@ class TaskProcess(metaclass=UniqueInstance):
     async def close(self) -> None:
         """Se cierra el rpcoesador de tareas
         """
-        logger.info("Cerrar procesamiento de tareas")
         check_id = checkpoint("Cerrar procesamiento de tareas")
         self._task_request_manager.cancel()
         self._task_responses_manager.cancel()
@@ -74,7 +71,7 @@ class TaskProcess(metaclass=UniqueInstance):
         check_id = checkpoint("Llega una requests a send()")
         r_id, queue_task = await self._request_storage.add(input_data)
         try:
-            result, error = await queue_task.get()
+            process_id,result, error = await queue_task.get()
         except asyncio.exceptions.CancelledError as exc:
             await self._request_storage.remove(r_id)
             raise ExternalProcessException() from exc
@@ -97,6 +94,7 @@ class TaskProcess(metaclass=UniqueInstance):
         coros = [self.send(input) for input in chunk_input]
         batches = await asyncio.gather(*coros)
         result = list(chain.from_iterable(batches))
+        #Falta separar los errors y el process_id
         checkpoint(check_id=check_id)
         return result
 
@@ -116,4 +114,4 @@ class TaskProcess(metaclass=UniqueInstance):
             response = await self._pool_process.get()
             if response:
                 process_id, r_ids, results, errors = response
-                await self._request_storage.put(r_ids, results, errors)
+                await self._request_storage.put(r_ids, results, errors,process_id)
