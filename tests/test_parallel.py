@@ -28,7 +28,7 @@ class TaskProcessTestCase(unittest.IsolatedAsyncioTestCase):
         '''
         test_controller = TestController()
         try:
-            self.task_process = TaskProcess(controller=test_controller, num_processes=1)
+            self.task_process = TaskProcess(worker=test_controller, num_processes=1)
             await self.task_process.start()
         except Exception as exc:  # pylint: disable=W0718
             print(exc)
@@ -46,14 +46,14 @@ class TaskProcessTestCase(unittest.IsolatedAsyncioTestCase):
 
         input_data = 1
         result = await self.task_process.send(input_data)
-        self.assertEqual(result, 20000)
+        self.assertEqual(result, (20000,0))
 
     async def test_send_batch(self):
         '''Test que pruba la función send de TaskProcess
         '''
         input_data = [0, 1, 2]
         result = await self.task_process.send_batch(input_data)
-        self.assertEqual(result, [0, 20000, 40000])
+        self.assertEqual(result, [[0, 20000, 40000],0])
 
     async def test_send_one_requests_process_error(self):
         '''Test que pruba la función send de TaskProcess y ocurre un error en el proceso

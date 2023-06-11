@@ -21,7 +21,7 @@ class TaskProcess(metaclass=UniqueInstance):
 
     def __init__(
         self,
-        controller: Worker,
+        worker: Worker,
         num_processes: int = 1,
         max_num_process: int = 4,
         chunk_requests: int = 30,
@@ -31,7 +31,7 @@ class TaskProcess(metaclass=UniqueInstance):
         self._chunk_requests = chunk_requests if chunk_requests > 0 else 1
         # Se inician parámetros internos
         self._request_storage = RequestStorage(time_chunk_requests)
-        self._pool_process = PoolProcess(controller, num_processes, max_num_process)
+        self._pool_process = PoolProcess(worker, num_processes, max_num_process)
         self._task_request_manager: asyncio.Task = None
         self._task_responses_manager: asyncio.Task = None
 
@@ -78,7 +78,7 @@ class TaskProcess(metaclass=UniqueInstance):
         checkpoint(check_id=check_id)
         if error:
             raise ResponseProcessException(error)
-        return result
+        return result,process_id
 
     async def send_batch(self, inputs_data: List[Any]) -> Any:
         """Envia un lote de parámetros a los procesos para que lo procesen
