@@ -88,7 +88,7 @@ class PoolProcess():
             await asyncio.sleep(0)
 
     async def get(self) -> Any | None:
-        """Devuleve un dato de algún proceso.
+        """Devuelve un dato de algún proceso.
 
         Returns:
             _type_: _description_
@@ -100,7 +100,7 @@ class PoolProcess():
             return
 
     async def _get_avg_usage_cpu(self, cpu_qty:int)->float:
-        """Devulelve el consumo promedio de todos los procesos activos.
+        """Devuelve el consumo promedio de todos los procesos activos.
 
         Args:
             cpu_qty (int): Cantiad de cpus activos.
@@ -132,6 +132,8 @@ class PoolProcess():
 
     async def _process_manager(self) -> None:
         """Controlador de los procesos que se crean y destruyen.
+        Mide el consumo promedio de todos los procesos. Si se super el valor de MAX_CPU_USAGE
+        se abre un nuevo proceso (siempre y cuando no se llegue al máximo d eprocesos permitidos)
         """
         time_cpu_max = 0
         while True:
