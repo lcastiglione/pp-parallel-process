@@ -4,7 +4,6 @@ import queue
 import time
 from typing import Any
 from abc import ABC, abstractmethod
-from logs.logger import logger
 
 TIME_WAIT: int = 60*30  # 30 min
 
@@ -22,7 +21,7 @@ class Worker(ABC):
             output_queue (queue.Queue): Objeto Queue para enviar respuesta al hilo principal
             keep (bool, optional): Indica si el proceso se tiene que mantener vivo si o sí. Por default es False
         """
-        logger.info("Se abre el proceso %i", process_id)
+        cls.start_process(process_id)
         cls.load_config()
         unused_process_time = time.time()
         while True and ((time.time() - unused_process_time) < TIME_WAIT or keep):
@@ -33,6 +32,8 @@ class Worker(ABC):
                 o_queue.put((process_id, r_ids, results, errors))
                 unused_process_time = time.time()
             except queue.Empty:
+                # Cuando se cumple el timeout sin recibir mensaje, se lanza una excepción de queue vacío.
+                # Se captura, se ignora y se sigue esperando
                 pass
             except KeyboardInterrupt:
                 break
@@ -40,9 +41,32 @@ class Worker(ABC):
                 # Todos los posibles errores que puedan ocurrir en el proceso, deberían estar cubiertos
                 # por la implementación del worker. Si un error no es tenido en cuenta, se captura acá y se
                 # los cataloga como crítico.
-                logger.critical("Hubo un error inesperado en el proceso %i: %s", process_id, str(exc), exc_info=True)
-                o_queue.put((process_id, r_ids, None, [str(exc)]*len(r_ids)))
-        logger.info("Se cierra el proceso %i", process_id)
+                cls.print_error("Hubo un error inesperado en el proceso", process_id=process_id, exc=exc)
+                try:
+                    o_queue.put((process_id, r_ids, None, [str(exc)]*len(r_ids)))
+                except Exception as exc_queue:  # pylint: disable=W0718
+                    cls.print_error("Fallo el envio de datos por el output queue", process_id=process_id, exc=exc_queue)
+                    break
+        cls.stop_process(process_id)
+
+    @classmethod
+    def print_error(cls, error_message: str, process_id: int = None, exc: Exception = None) -> None:
+        """Método para procesar errores inesperados dentro del proceso. Cada implementación de
+        pprocess deberá definir este método pero por default, se muestra en consola.
+        """
+        print(f"Mensaje de error: {error_message}. ID del proceso: {process_id}. Error: {str(exc)}")
+
+    @classmethod
+    @abstractmethod
+    def start_process(cls, process_id: int) -> None:
+        """Método abstracto que se ejecuta cuando se abre un nuevo proceso
+        """
+
+    @classmethod
+    @abstractmethod
+    def stop_process(cls, process_id: int) -> None:
+        """Método abstracto que se ejecuta cuando se cierra un proceso
+        """
 
     @classmethod
     @abstractmethod
