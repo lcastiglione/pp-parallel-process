@@ -2,15 +2,11 @@
 
 import asyncio
 import unittest
-import logging
-from logs.logger import CustomLogger
 from pprocess import TaskProcess
 from pprocess.exceptions import ResponseProcessException, ExternalProcessException
 from pprocess.utils.performance import clean_performance_data, get_performance_report
 from tests.utils import TestController
 
-
-CustomLogger().set_level(logging.CRITICAL + 1)
 
 
 class TaskProcessTestCase(unittest.IsolatedAsyncioTestCase):
@@ -43,7 +39,6 @@ class TaskProcessTestCase(unittest.IsolatedAsyncioTestCase):
     async def test_send(self):
         '''Test que pruba la función send de TaskProcess
         '''
-
         input_data = 1
         result = await self.task_process.send(input_data)
         self.assertEqual(result, (20000,0))
@@ -58,7 +53,6 @@ class TaskProcessTestCase(unittest.IsolatedAsyncioTestCase):
     async def test_send_one_requests_process_error(self):
         '''Test que pruba la función send de TaskProcess y ocurre un error en el proceso
         '''
-
         input_data = -1
         with self.assertRaises(ResponseProcessException) as catch_exc:
             await self.task_process.send(input_data)
@@ -67,7 +61,6 @@ class TaskProcessTestCase(unittest.IsolatedAsyncioTestCase):
     async def test_send_multiple_requests_process_error(self):
         '''Test que pruba la función send de TaskProcess y ocurre un error en el proceso
         '''
-
         input_data = -1
         with self.assertRaises(ResponseProcessException) as catch_exc:
             tasks = [self.task_process.send(input_data) for _ in range(10)]
@@ -77,7 +70,6 @@ class TaskProcessTestCase(unittest.IsolatedAsyncioTestCase):
     async def test_send_batch_requests_process_error(self):
         '''Test que pruba la función send_batch de TaskProcess y ocurre un error en el proceso
         '''
-
         input_data = [-1, 0, 1]
         with self.assertRaises(ResponseProcessException) as catch_exc:
             await self.task_process.send_batch(input_data)
@@ -86,7 +78,6 @@ class TaskProcessTestCase(unittest.IsolatedAsyncioTestCase):
     async def test_send_one_requests_user_error(self):
         '''Test que pruba la función send de TaskProcess y se corta la ejecución de la misma del lado de usuario
         '''
-
         input_data = 2
         task = asyncio.Task(self.task_process.send(input_data))
         await asyncio.sleep(0.1)
@@ -101,7 +92,6 @@ class TaskProcessTestCase(unittest.IsolatedAsyncioTestCase):
     async def test_send_batch_requests_user_error(self):
         '''Test que pruba la función send_batch de TaskProcess y se corta la ejecución de la misma del lado de usuario
         '''
-
         input_data = [i for i in range(50)]
         task = asyncio.Task(self.task_process.send_batch(input_data))
         await asyncio.sleep(0.1)
