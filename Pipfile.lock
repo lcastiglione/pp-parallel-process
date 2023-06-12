@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "82e7bc96e9afe756983a07a6e92b7346b8ecb545780b2bbd945023317f8523cb"
+            "sha256": "d54bf58a0d976deb36ee312721095c51f496ce596303d00bbb8feb4058634486"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -16,10 +16,6 @@
         ]
     },
     "default": {
-        "logs": {
-            "git": "https://github.com/lcastiglione/pp-logs.git",
-            "ref": "6165918cba2b584bbaf151c3d7c7071ae66f5b5f"
-        },
         "psutil": {
             "hashes": [
                 "sha256:104a5cc0e31baa2bcf67900be36acde157756b9c44017b86b2c049f11957887d",
@@ -39,14 +35,6 @@
             ],
             "index": "pypi",
             "version": "==5.9.5"
-        },
-        "python-json-logger": {
-            "hashes": [
-                "sha256:23e7ec02d34237c5aa1e29a070193a4ea87583bb4e7f8fd06d3de8264c4b2e1c",
-                "sha256:f380b826a991ebbe3de4d897aeec42760035ac760345e57b812938dc8b35e2bd"
-            ],
-            "markers": "python_version >= '3.6'",
-            "version": "==2.0.7"
         }
     },
     "develop": {
