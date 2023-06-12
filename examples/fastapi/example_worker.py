@@ -7,6 +7,18 @@ class ExampleWorker(Worker):
         pass
 
     @classmethod
+    def start_process(cls, process_id: int):
+        pass
+
+    @classmethod
+    def stop_process(cls, process_id: int):
+        pass
+
+    @classmethod
+    def print_error(cls, error_message: str, process_id: int = None, exc: Exception = None):
+        pass
+
+    @classmethod
     def execute(cls, params):
         results = []
         errors = None
